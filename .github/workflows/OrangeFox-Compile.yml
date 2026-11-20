@@ -108,12 +108,36 @@ jobs:
         fi
         echo "DEVICE_TREE_URL=${DEVICE_TREE_URL}" >> $GITHUB_ENV
 
+    - name: Prepare Release Files
+      run: |
+        cd ${GITHUB_WORKSPACE}/OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}
+
+        OUTPUT_DIR="out/target/product/${{ inputs.DEVICE_NAME }}"
+        RELEASE_DIR="${GITHUB_WORKSPACE}/release"
+
+        mkdir -p "$RELEASE_DIR"
+
+        if [ ! -d "$OUTPUT_DIR" ]; then
+          echo "ERROR: Output directory does not exist: $OUTPUT_DIR"
+          exit 1
+        fi
+
+        find "$OUTPUT_DIR" -type f \( -name "*.img" -o -name "*.zip" \) -exec cp -v {} "$RELEASE_DIR/" \;
+
+        if [ -z "$(ls -A "$RELEASE_DIR")" ]; then
+          echo "ERROR: No .img or .zip files were generated!"
+          echo "=== Product directory contents ==="
+          ls -lah "$OUTPUT_DIR"
+          exit 1
+        fi
+
+        echo "=== Files prepared for release ==="
+        ls -lah "$RELEASE_DIR"
+
     - name: Upload to Release
       uses: softprops/action-gh-release@v2
       with:
-        files: |
-          OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/out/target/product/${{ inputs.DEVICE_NAME }}/*.img
-          OrangeFox/fox_${{ inputs.MANIFEST_BRANCH }}/out/target/product/${{ inputs.DEVICE_NAME }}/*.zip
+        files: release/*
         name: OrangeFox Recovery for ${{ inputs.DEVICE_NAME }} // ${{ env.BUILD_DATE }}
         tag_name: ${{ github.run_id }}
         body: |
